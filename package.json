@@ -7,7 +7,8 @@
     "crond": "./index.mjs"
   },
   "dependencies": {
-    "cron": "^3.1.0"
+    "cron": "^3.1.0",
+    "js-yaml": "^3.13.1"
   },
   "author": {
     "name": "Darlan Alves",

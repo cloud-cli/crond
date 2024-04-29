@@ -1,5 +1,6 @@
 import { CronJob } from "cron";
 import { exec as sh } from "node:child_process";
+import * as Yaml from "js-yaml";
 import {
   createWriteStream,
   existsSync,
@@ -9,6 +10,7 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
+const loadYaml = Yaml.default.load;
 const CWD = process.cwd();
 const logsFolder = process.env.CRON_LOGS_FOLDER || "/tmp/cronjobs";
 const jobsFileName = process.env.CRON_JOBS_FILE || "jobs.json";
@@ -40,7 +42,8 @@ const waitFor = (s) =>
   });
 
 async function runJobCommands(job) {
-  const file = join(logsFolder, job.name + ".log");
+  const jobNameSanitized = job.name.replace(/\s+/g, '-');
+  const file = join(logsFolder, jobNameSanitized + ".log");
   const stats = statSync(file);
   const log = createWriteStream(file, { start: stats.size, flags: "r+" });
 
@@ -84,8 +87,15 @@ function loadJobs() {
   const jobs = [];
 
   try {
-    const src = JSON.parse(readFileSync(jobsFile, "utf8"));
-    jobs.push(src.jobs);
+    const src = readFileSync(jobsFile, "utf8");
+
+    if (jobsFile.endsWith(".yaml") || jobsFile.endsWith(".yml")) {
+      const json = loadYaml(src);
+      jobs.push(...json.jobs);
+    } else {
+      const json = JSON.parse(src);
+      jobs.push(...json.jobs);
+    }
   } catch (error) {
     console.error(`Failed to read ${jobsFileName}: ${String(error)}!`);
     process.exit(1);

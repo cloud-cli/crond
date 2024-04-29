@@ -1,6 +1,6 @@
 # crond
 
-Crontab-like runner
+A crontab-like runner using [NPM cron package](https://npmjs.com/cron).
 
 ## Install
 
@@ -12,7 +12,7 @@ npm i -g @cloud-cli/crond
 
 ## Usage
 
-- Create `jobs.json` at either `$HOME/jobs.json` or the current folder.
+- Create `jobs.json` or `jobs.yaml` at either `$HOME` or the current folder.
 - run `crond` from a shell.
 
 ## Environment variables
@@ -22,3 +22,21 @@ npm i -g @cloud-cli/crond
 | CRON_LOGS_FOLDER | Path to a folder where logs will be placed per job. Default is `/tmp/cronjobs` |
 | CRON_JOBS_FILE | Name of the JSON file where jobs are defined. Default is `jobs.json` |
 | DEBUG | Set it to get debug logs from `crond` |
+
+## Jobs file format
+
+- Each job can have one or more commands to execute.
+- The current folder can be specified
+- Interval follows the same syntax as crontab. Use [https://crontab.guru/](https://crontab.guru/) to verify
+- Give it a short name. This name is used to create the output log file.
+
+```yaml
+jobs:
+  - name: job-name
+    interval: '0/5 * * *'
+    cwd: /tmp/abc
+    commands:
+      - echo "Hello mom!"
+      - cat file.txt
+      - wget https://example.com
+```
