@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { CronJob } from "cron";
 import { exec as sh } from "node:child_process";
 import * as Yaml from "js-yaml";

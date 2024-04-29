@@ -16,8 +16,9 @@ npm i -g @cloud-cli/crond
 
 ## Usage
 
-- Create `jobs.json` or `jobs.yaml` at either `$HOME` or the current folder.
-- run `crond` from a shell.
+- run `crond` to schedule jobs defined in the configuration file
+- run `crond -d` or `crond --daemon` to detach from your shell (run in the background, like a daemon)
+- the daemon writes a log to `$CRON_LOGS_FOLDER/crond.log`
 
 ## Environment variables
 
@@ -29,6 +30,7 @@ npm i -g @cloud-cli/crond
 
 ## Jobs file format
 
+- Create `jobs.json` or `jobs.yaml` at either `$HOME` or the current folder.
 - Each job can have one or more commands to execute.
 - The current folder can be specified
 - Interval follows the same syntax as crontab. Use [https://crontab.guru/](https://crontab.guru/) to verify
@@ -43,6 +45,7 @@ jobs:
       - echo "Hello mom!"
       - cat file.txt
       - wget https://example.com
+
   - name: another-job-name
     interval: '0 0 * * *'
     cwd: /tmp/abc
