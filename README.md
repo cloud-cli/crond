@@ -2,10 +2,18 @@
 
 Crontab-like runner
 
+## Install
+
+```sh
+npm i -g @cloud-cli/crond
+```
+
+> Make sure the global NPM folder is part of `$PATH`.
+
 ## Usage
 
-- Create `jobs.json` at either `$HOME/jobs.json` or the current folder
-- run `crond` from a shell
+- Create `jobs.json` at either `$HOME/jobs.json` or the current folder.
+- run `crond` from a shell.
 
 ## Environment variables
 
