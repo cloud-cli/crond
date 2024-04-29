@@ -39,21 +39,45 @@ function start() {
 
 const waitFor = (s) =>
   new Promise((resolve, reject) => {
-    s.on("exit", resolve);
+    s.on("exit", (code) => (code == 0 ? resolve() : reject(code)));
     s.on("error", reject);
   });
 
 async function runJobCommands(job) {
   const jobNameSanitized = job.name.replace(/\s+/g, "-");
   const file = join(logsFolder, jobNameSanitized + ".log");
-  const stats = statSync(file);
-  const log = createWriteStream(file, { start: stats.size, flags: "r+" });
+
+  let start = 0;
+  let flags = "w";
+
+  if (existsSync(file)) {
+    start = statSync(file).size;
+    flags = "r+";
+  }
+
+  const log = createWriteStream(file, { start, flags });
+  const write = log.write;
+  log.write = (chunk, ...args) =>
+    log.writable &&
+    write.apply(log, [
+      String(chunk)
+        .split("\n")
+        .map((line) =>
+          line ? `[${new Date().toISOString().slice(0, 19)}] ${line}` : ""
+        )
+        .join("\n"),
+      ...args,
+    ]);
 
   log.write("Starting " + job.name + "\n");
 
   try {
-    for (const command of job.commands) {
-      log.write(`[${new Date().toISOString().slice(0, 19)}] ${command}\n`);
+    const commands = Array.isArray(job.commands)
+      ? job.commands
+      : [job.commands || job.command];
+
+    for (const command of commands) {
+      log.write(`${command}\n`);
 
       const p = sh(command, {
         cwd: job.cwd || CWD,

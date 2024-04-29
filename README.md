@@ -2,6 +2,10 @@
 
 A crontab-like runner using [NPM cron package](https://npmjs.com/cron).
 
+> Oh, but why can't you just use crontab? What's this?
+
+Well, I could. But maybe I want to run cronjobs on my phone or inside a container and I don't want to fiddle with the host file system. This is completely userland.
+
 ## Install
 
 ```sh
@@ -39,4 +43,8 @@ jobs:
       - echo "Hello mom!"
       - cat file.txt
       - wget https://example.com
+  - name: another-job-name
+    interval: '0 0 * * *'
+    cwd: /tmp/abc
+    command: npm update
 ```
