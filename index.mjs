@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { CronJob } from "cron";
 import { exec as sh } from "node:child_process";
 import * as Yaml from "js-yaml";
@@ -13,11 +15,11 @@ import { join } from "node:path";
 const loadYaml = Yaml.default.load;
 const CWD = process.cwd();
 const logsFolder = process.env.CRON_LOGS_FOLDER || "/tmp/cronjobs";
-const jobsFileName = process.env.CRON_JOBS_FILE || "jobs.json";
+const jobsFileName = process.env.CRON_JOBS_FILE || "jobs";
+const debug = !!process.env.DEBUG;
 
 function start() {
   mkdirSync(join(logsFolder), { recursive: true });
-  const debug = !!process.env.DEBUG;
   const jobs = loadJobs();
 
   for (const job of jobs) {
@@ -42,7 +44,7 @@ const waitFor = (s) =>
   });
 
 async function runJobCommands(job) {
-  const jobNameSanitized = job.name.replace(/\s+/g, '-');
+  const jobNameSanitized = job.name.replace(/\s+/g, "-");
   const file = join(logsFolder, jobNameSanitized + ".log");
   const stats = statSync(file);
   const log = createWriteStream(file, { start: stats.size, flags: "r+" });
@@ -73,35 +75,41 @@ async function runJobCommands(job) {
   }
 }
 
-function loadJobs() {
-  const jobsFile = [
+function findJobsFile() {
+  const extensions = ["yaml", "yml", "json"];
+  const candidates = [
     join(CWD, jobsFileName),
     join(process.env.HOME || "", jobsFileName),
-  ].find((f) => existsSync(f));
+  ].flatMap((f) => extensions.map((e) => f + "." + e));
+
+  return candidates.find((f) => {
+    debug && console.log("Trying " + f);
+    return existsSync(f);
+  });
+}
+
+function loadJobs() {
+  const jobsFile = findJobsFile();
 
   if (!jobsFile) {
-    console.error(`No jobs found. Create ${jobsFileName} first!`);
+    console.error(`No jobs found. Create a list of jobs first!`);
     process.exit(1);
   }
-
-  const jobs = [];
 
   try {
     const src = readFileSync(jobsFile, "utf8");
 
     if (jobsFile.endsWith(".yaml") || jobsFile.endsWith(".yml")) {
       const json = loadYaml(src);
-      jobs.push(...json.jobs);
+      return json.jobs;
     } else {
       const json = JSON.parse(src);
-      jobs.push(...json.jobs);
+      return json.jobs;
     }
   } catch (error) {
     console.error(`Failed to read ${jobsFileName}: ${String(error)}!`);
     process.exit(1);
   }
-
-  return jobs;
 }
 
 start();
