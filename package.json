@@ -1,0 +1,12 @@
+{
+  "name": "@cloud-cli/crond",
+  "version": "0.0.0",
+  "type": "module",
+  "main": "./index.mjs",
+  "bin": {
+    "crond": "./index.mjs"
+  },
+  "dependencies": {
+    "cron": "^3.1.0"
+  }
+}
