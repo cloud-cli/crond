@@ -3,6 +3,7 @@
 import { CronJob } from "cron";
 import { spawn, exec as sh } from "node:child_process";
 import * as Yaml from "js-yaml";
+import { join, dirname, basename } from "node:path";
 import {
   createWriteStream,
   existsSync,
@@ -11,7 +12,6 @@ import {
   statSync,
   openSync,
 } from "node:fs";
-import { join, dirname } from "node:path";
 
 const loadYaml = Yaml.default.load;
 const CWD = process.cwd();
@@ -43,7 +43,9 @@ function start() {
 function startDaemon() {
   const stdout = openSync(join(logsFolder, "crond.log"), "a");
   const cwd = dirname(process.argv[1]);
-  const child = spawn("node", ["index.mjs"], {
+  const file = basename(process.argv[1]);
+  const args = process.argv.slice(3);
+  const child = spawn("node", [file, ...args], {
     cwd,
     detached: true,
     stdio: ["ignore", stdout, stdout],
@@ -143,8 +145,11 @@ function startService(service) {
 }
 
 function findJobsFile() {
+  const fromArgs = process.argv[2];
   const extensions = ["yaml", "yml", "json"];
   const candidates = [
+    fromArgs,
+    join(CWD, fromArgs),
     join(CWD, jobsFileName),
     join(process.env.HOME || "", jobsFileName),
   ].flatMap((f) => extensions.map((e) => f + "." + e));
