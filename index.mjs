@@ -168,6 +168,7 @@ function loadJobs() {
   }
 
   try {
+    console.log("Loading " + jobsFile);
     const src = readFileSync(jobsFile, "utf8");
 
     if (jobsFile.endsWith(".yaml") || jobsFile.endsWith(".yml")) {
