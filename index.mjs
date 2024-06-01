@@ -3,7 +3,7 @@
 import { CronJob } from "cron";
 import { spawn, exec as sh } from "node:child_process";
 import * as Yaml from "js-yaml";
-import { join, dirname, basename } from "node:path";
+import { join, dirname } from "node:path";
 import {
   createWriteStream,
   existsSync,
@@ -48,9 +48,8 @@ function start() {
 function startDaemon() {
   const stdout = openSync(join(logsFolder, "crond.log"), "a");
   const cwd = dirname(process.argv[1]);
-  const file = basename(process.argv[1]);
   const args = process.argv.slice(3);
-  const child = spawn("node", [file, ...args], {
+  const child = spawn("node", [process.argv[1], ...args], {
     cwd,
     detached: true,
     stdio: ["ignore", stdout, stdout],
@@ -150,7 +149,10 @@ function startService(service) {
     log.writable("[CRON] service exited with code " + code);
 
     if (service.restart !== false) {
-      setTimeout(() => startService(service), service.restartInterval || restartInterval);
+      setTimeout(
+        () => startService(service),
+        service.restartInterval || restartInterval
+      );
     }
   });
 
@@ -162,9 +164,11 @@ function findJobsFile() {
   const extensions = ["yaml", "yml", "json"];
   const candidates = [
     ...((fromArgs && [fromArgs, join(CWD, fromArgs)]) || []),
-    join(CWD, jobsFileName),
-    join(process.env.HOME || "", jobsFileName),
-  ].flatMap((f) => extensions.map((e) => f + "." + e));
+    ...[
+      join(CWD, jobsFileName),
+      join(process.env.HOME || "", jobsFileName),
+    ].flatMap((f) => extensions.map((e) => f + "." + e)),
+  ];
 
   return candidates.find((f) => {
     debug && console.log("Trying " + f);
