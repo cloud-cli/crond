@@ -145,7 +145,7 @@ function startService(service) {
 }
 
 function findJobsFile() {
-  const fromArgs = process.argv[2];
+  const fromArgs = process.argv[2] || '';
   const extensions = ["yaml", "yml", "json"];
   const candidates = [
     fromArgs,
