@@ -23,6 +23,10 @@ function start() {
   mkdirSync(join(logsFolder), { recursive: true });
   const { jobs = [], services = [] } = loadJobs();
 
+  if (!jobs.length && !services.length) {
+    console.log('Nothing to run.');
+  }
+
   for (const job of jobs) {
     debug &&
       console.log(`[${job.name}] registered with interval "${job.interval}"`);
@@ -172,8 +176,7 @@ function loadJobs() {
     const src = readFileSync(jobsFile, "utf8");
 
     if (jobsFile.endsWith(".yaml") || jobsFile.endsWith(".yml")) {
-      const json = loadYaml(src);
-      return json.jobs;
+      return loadYaml(src);
     } else {
       return JSON.parse(src);
     }
