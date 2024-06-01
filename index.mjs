@@ -1,5 +1,7 @@
+#!/usr/bin/env node
+
 import { CronJob } from "cron";
-import { exec as sh } from "node:child_process";
+import { spawn, exec as sh } from "node:child_process";
 import * as Yaml from "js-yaml";
 import {
   createWriteStream,
@@ -7,8 +9,9 @@ import {
   mkdirSync,
   readFileSync,
   statSync,
+  openSync,
 } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 
 const loadYaml = Yaml.default.load;
 const CWD = process.cwd();
@@ -18,7 +21,7 @@ const debug = !!process.env.DEBUG;
 
 function start() {
   mkdirSync(join(logsFolder), { recursive: true });
-  const jobs = loadJobs();
+  const { jobs = [], services = [] } = loadJobs();
 
   for (const job of jobs) {
     debug &&
@@ -33,6 +36,20 @@ function start() {
       true
     );
   }
+
+  services.map((s) => startService(s));
+}
+
+function startDaemon() {
+  const stdout = openSync(join(logsFolder, "crond.log"), "a");
+  const cwd = dirname(process.argv[1]);
+  const child = spawn("node", ["index.mjs"], {
+    cwd,
+    detached: true,
+    stdio: ["ignore", stdout, stdout],
+  });
+
+  child.unref();
 }
 
 const waitFor = (s) =>
@@ -41,20 +58,10 @@ const waitFor = (s) =>
     s.on("error", reject);
   });
 
-async function runJobCommands(job) {
-  const jobNameSanitized = job.name.replace(/\s+/g, "-");
-  const file = join(logsFolder, jobNameSanitized + ".log");
-
-  let start = 0;
-  let flags = "w";
-
-  if (existsSync(file)) {
-    start = statSync(file).size;
-    flags = "r+";
-  }
-
-  const log = createWriteStream(file, { start, flags });
+function createLogLine(file, options) {
+  const log = createWriteStream(file, options);
   const write = log.write;
+
   log.write = (chunk, ...args) =>
     log.writable &&
     write.apply(log, [
@@ -67,6 +74,12 @@ async function runJobCommands(job) {
       ...args,
     ]);
 
+  return log;
+}
+
+async function runJobCommands(job) {
+  const jobNameSanitized = job.name.replace(/\s+/g, "-");
+  const log = createLogStream(jobNameSanitized);
   log.write("Starting " + job.name + "\n");
 
   try {
@@ -97,6 +110,38 @@ async function runJobCommands(job) {
   }
 }
 
+function createLogStream(name) {
+  const file = join(logsFolder, name + ".log");
+
+  let start = 0;
+  let flags = "w";
+
+  if (existsSync(file)) {
+    start = statSync(file).size;
+    flags = "r+";
+  }
+
+  const log = createLogLine(file, { start, flags });
+
+  return log;
+}
+
+function startService(service) {
+  const jobNameSanitized = service.name.replace(/\s+/g, "-");
+  const log = createLogStream(jobNameSanitized);
+  log.write("Starting service " + service.name + "\n");
+
+  const p = sh(service.command, {
+    cwd: service.cwd || CWD,
+    env: { ...process.env, ...(service.env || {}) },
+  });
+
+  p.stdout.pipe(log);
+  p.stderr.pipe(log);
+
+  return p;
+}
+
 function findJobsFile() {
   const extensions = ["yaml", "yml", "json"];
   const candidates = [
@@ -125,8 +170,7 @@ function loadJobs() {
       const json = loadYaml(src);
       return json.jobs;
     } else {
-      const json = JSON.parse(src);
-      return json.jobs;
+      return JSON.parse(src);
     }
   } catch (error) {
     console.error(`Failed to read ${jobsFileName}: ${String(error)}!`);
@@ -134,4 +178,8 @@ function loadJobs() {
   }
 }
 
-start();
+if (process.argv[2] == "-d" || process.argv[2] === "--daemon") {
+  startDaemon();
+} else {
+  start();
+}

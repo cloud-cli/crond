@@ -50,4 +50,11 @@ jobs:
     interval: '0 0 * * *'
     cwd: /tmp/abc
     command: npm update
+
+services:
+  - name: http-server
+    restart: true
+    restartInterval: 5000
+    cwd: /var/www
+    command: node /opt/http.js
 ```
