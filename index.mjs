@@ -145,11 +145,10 @@ function startService(service) {
 }
 
 function findJobsFile() {
-  const fromArgs = process.argv[2] || '';
+  const fromArgs = process.argv[2] || "";
   const extensions = ["yaml", "yml", "json"];
   const candidates = [
-    fromArgs,
-    join(CWD, fromArgs),
+    ...((fromArgs && [fromArgs, join(CWD, fromArgs)]) || []),
     join(CWD, jobsFileName),
     join(process.env.HOME || "", jobsFileName),
   ].flatMap((f) => extensions.map((e) => f + "." + e));
