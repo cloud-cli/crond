@@ -17,6 +17,7 @@ const loadYaml = Yaml.default.load;
 const CWD = process.cwd();
 const logsFolder = process.env.CRON_LOGS_FOLDER || "/tmp/cronjobs";
 const jobsFileName = process.env.CRON_JOBS_FILE || "jobs";
+const restartInterval = Number(process.env.CRON_RESTART_INTERVAL || 5000);
 const debug = !!process.env.DEBUG;
 
 function start() {
@@ -24,7 +25,7 @@ function start() {
   const { jobs = [], services = [] } = loadJobs();
 
   if (!jobs.length && !services.length) {
-    console.log('Nothing to run.');
+    console.log("Nothing to run.");
   }
 
   for (const job of jobs) {
@@ -144,6 +145,14 @@ function startService(service) {
 
   p.stdout.pipe(log);
   p.stderr.pipe(log);
+
+  p.on("exit", (code) => {
+    log.writable("[CRON] service exited with code " + code);
+
+    if (service.restart !== false) {
+      setTimeout(() => startService(service), service.restartInterval || restartInterval);
+    }
+  });
 
   return p;
 }
