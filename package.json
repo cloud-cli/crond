@@ -4,7 +4,7 @@
   "type": "module",
   "main": "./index.mjs",
   "bin": {
-    "crond": "./index.mjs"
+    "crond": "./cli.mjs"
   },
   "dependencies": {
     "cron": "^3.1.0",

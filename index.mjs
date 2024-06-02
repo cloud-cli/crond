@@ -1,5 +1,3 @@
-#!/usr/bin/env node
-
 import { CronJob } from "cron";
 import { spawn, exec as sh } from "node:child_process";
 import * as Yaml from "js-yaml";
@@ -19,8 +17,13 @@ const logsFolder = process.env.CRON_LOGS_FOLDER || "/tmp/cronjobs";
 const jobsFileName = process.env.CRON_JOBS_FILE || "jobs";
 const restartInterval = Number(process.env.CRON_RESTART_INTERVAL || 5000);
 const debug = !!process.env.DEBUG;
+const waitFor = (s) =>
+  new Promise((resolve, reject) => {
+    s.on("exit", (code) => (code == 0 ? resolve() : reject(code)));
+    s.on("error", reject);
+  });
 
-function start() {
+export function start() {
   mkdirSync(join(logsFolder), { recursive: true });
   const { jobs = [], services = [] } = loadJobs();
 
@@ -35,7 +38,7 @@ function start() {
     new CronJob(
       job.interval,
       function onTick() {
-        runJobCommands(job);
+        runJob(job);
       },
       null,
       true
@@ -45,7 +48,7 @@ function start() {
   services.map((s) => startService(s));
 }
 
-function startDaemon() {
+export function startDaemon() {
   const stdout = openSync(join(logsFolder, "crond.log"), "a");
   const cwd = dirname(process.argv[1]);
   const args = process.argv.slice(3);
@@ -58,13 +61,7 @@ function startDaemon() {
   child.unref();
 }
 
-const waitFor = (s) =>
-  new Promise((resolve, reject) => {
-    s.on("exit", (code) => (code == 0 ? resolve() : reject(code)));
-    s.on("error", reject);
-  });
-
-function createLogLine(file, options) {
+export function createLogLine(file, options) {
   const log = createWriteStream(file, options);
   const write = log.write;
 
@@ -83,7 +80,7 @@ function createLogLine(file, options) {
   return log;
 }
 
-async function runJobCommands(job) {
+export async function runJob(job) {
   const jobNameSanitized = job.name.replace(/\s+/g, "-");
   const log = createLogStream(jobNameSanitized);
   log.write("Starting " + job.name + "\n");
@@ -98,7 +95,7 @@ async function runJobCommands(job) {
 
       const p = sh(command, {
         cwd: job.cwd || CWD,
-        env: process.env,
+        env: { ...process.env, ...(job.env || {}) },
       });
 
       p.stdout.pipe(log);
@@ -116,7 +113,7 @@ async function runJobCommands(job) {
   }
 }
 
-function createLogStream(name) {
+export function createLogStream(name) {
   const file = join(logsFolder, name + ".log");
 
   let start = 0;
@@ -132,7 +129,7 @@ function createLogStream(name) {
   return log;
 }
 
-function startService(service) {
+export function startService(service) {
   const jobNameSanitized = service.name.replace(/\s+/g, "-");
   const log = createLogStream(jobNameSanitized);
   log.write("Starting service " + service.name + "\n");
@@ -146,7 +143,7 @@ function startService(service) {
   p.stderr.pipe(log);
 
   p.on("exit", (code) => {
-    log.writable("[CRON] service exited with code " + code);
+    log.write("[CRON] service exited with code " + code);
 
     if (service.restart !== false) {
       setTimeout(
@@ -159,7 +156,7 @@ function startService(service) {
   return p;
 }
 
-function findJobsFile() {
+export function findJobsFile() {
   const fromArgs = process.argv[2] || "";
   const extensions = ["yaml", "yml", "json"];
   const candidates = [
@@ -176,7 +173,7 @@ function findJobsFile() {
   });
 }
 
-function loadJobs() {
+export function loadJobs() {
   const jobsFile = findJobsFile();
 
   if (!jobsFile) {
@@ -197,10 +194,4 @@ function loadJobs() {
     console.error(`Failed to read ${jobsFileName}: ${String(error)}!`);
     process.exit(1);
   }
-}
-
-if (process.argv[2] == "-d" || process.argv[2] === "--daemon") {
-  startDaemon();
-} else {
-  start();
 }
