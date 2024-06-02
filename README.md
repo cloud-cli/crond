@@ -58,3 +58,23 @@ services:
     cwd: /var/www
     command: node /opt/http.js
 ```
+
+## API
+
+```ts
+interface Job {
+  name: string;
+  interval: 'once' | string;
+  cwd: string;
+  command?: string;
+  commands?: string[];
+}
+
+interface Service {
+  name: string;
+  command: string;
+  restart?: boolean;
+  restartInterval?: number;
+  cwd?: string;
+}
+```

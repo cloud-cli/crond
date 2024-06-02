@@ -32,20 +32,26 @@ export function start() {
   }
 
   for (const job of jobs) {
-    debug &&
-      console.log(`[${job.name}] registered with interval "${job.interval}"`);
-
-    new CronJob(
-      job.interval,
-      function onTick() {
-        runJob(job);
-      },
-      null,
-      true
-    );
+    createJob(job);
   }
 
-  services.map((s) => startService(s));
+  for (const service of services) {
+    createService(service);
+  }
+}
+
+export function createJob(job) {
+  debug &&
+    console.log(`[${job.name}] registered with interval "${job.interval}"`);
+
+  new CronJob(
+    job.interval,
+    function onTick() {
+      runJob(job);
+    },
+    null,
+    true
+  );
 }
 
 export function startDaemon() {
@@ -129,7 +135,7 @@ export function createLogStream(name) {
   return log;
 }
 
-export function startService(service) {
+export function createService(service) {
   const jobNameSanitized = service.name.replace(/\s+/g, "-");
   const log = createLogStream(jobNameSanitized);
   log.write("Starting service " + service.name + "\n");
@@ -147,11 +153,13 @@ export function startService(service) {
 
     if (service.restart !== false) {
       setTimeout(
-        () => startService(service),
+        () => createService(service),
         service.restartInterval || restartInterval
       );
     }
   });
+
+  p.service = service;
 
   return p;
 }
