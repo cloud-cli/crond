@@ -54,12 +54,9 @@ export function createJob(job) {
   );
 }
 
-export function startDaemon() {
+export function startDaemon(args = []) {
   const stdout = openSync(join(logsFolder, "crond.log"), "a");
-  const cwd = dirname(process.argv[1]);
-  const args = process.argv.slice(3);
   const child = spawn("node", [process.argv[1], ...args], {
-    cwd,
     detached: true,
     stdio: ["ignore", stdout, stdout],
   });
